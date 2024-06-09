@@ -1,187 +1,132 @@
 #!/usr/bin/python3
-"""This file contains the user module test cases"""
+"""
+Contains the TestUserDocs classes
+"""
 
-import os
-import unittest
 from datetime import datetime
-from models import storage
+import inspect
+import models
+from models import user
 from models.base_model import BaseModel
-from models.user import User
-from time import sleep
+import pep8
+import unittest
+User = user.User
+
+
+class TestUserDocs(unittest.TestCase):
+    """Tests to check the documentation and style of User class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.user_f = inspect.getmembers(User, inspect.isfunction)
+
+    def test_pep8_conformance_user(self):
+        """Test that models/user.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/user.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
+
+    def test_pep8_conformance_test_user(self):
+        """Test that tests/test_models/test_user.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_user.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
+
+    def test_user_module_docstring(self):
+        """Test for the user.py module docstring"""
+        self.assertIsNot(user.__doc__, None,
+                         "user.py needs a docstring")
+        self.assertTrue(len(user.__doc__) >= 1,
+                        "user.py needs a docstring")
+
+    def test_user_class_docstring(self):
+        """Test for the City class docstring"""
+        self.assertIsNot(User.__doc__, None,
+                         "User class needs a docstring")
+        self.assertTrue(len(User.__doc__) >= 1,
+                        "User class needs a docstring")
+
+    def test_user_func_docstrings(self):
+        """Test for the presence of docstrings in User methods"""
+        for func in self.user_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
 
 class TestUser(unittest.TestCase):
-    """Test cases for the User class."""
+    """Test the User class"""
+    def test_is_subclass(self):
+        """Test that User is a subclass of BaseModel"""
+        user = User()
+        self.assertIsInstance(user, BaseModel)
+        self.assertTrue(hasattr(user, "id"))
+        self.assertTrue(hasattr(user, "created_at"))
+        self.assertTrue(hasattr(user, "updated_at"))
 
-    @classmethod
-    def setUpClass(cls):
-        """Setup class to create temporary file."""
-        cls.user_data_file = 'file.json'
-        cls.backup_data_file = 'file_backup.json'
-        cls.user = User()
-        storage.save()
+    def test_email_attr(self):
+        """Test that User has attr email, and it's an empty string"""
+        user = User()
+        self.assertTrue(hasattr(user, "email"))
+        if models.storage_t == 'db':
+            self.assertEqual(user.email, None)
+        else:
+            self.assertEqual(user.email, "")
 
-    @classmethod
-    def tearDownClass(cls):
-        """Teardown class to clean up temporary files."""
-        try:
-            os.rename(cls.backup_data_file, cls.user_data_file)
-        except FileNotFoundError:
-            pass
+    def test_password_attr(self):
+        """Test that User has attr password, and it's an empty string"""
+        user = User()
+        self.assertTrue(hasattr(user, "password"))
+        if models.storage_t == 'db':
+            self.assertEqual(user.password, None)
+        else:
+            self.assertEqual(user.password, "")
 
-    def test_inheritance_and_attributes(self):
-        """Test inheritance and basic attributes."""
-        self.assertIsInstance(self.user, BaseModel)
+    def test_first_name_attr(self):
+        """Test that User has attr first_name, and it's an empty string"""
+        user = User()
+        self.assertTrue(hasattr(user, "first_name"))
+        if models.storage_t == 'db':
+            self.assertEqual(user.first_name, None)
+        else:
+            self.assertEqual(user.first_name, "")
 
-        attributes = ["email", "first_name", "last_name", "password"]
-        for attribute in attributes:
-            self.assertTrue(hasattr(self.user, attribute))
+    def test_last_name_attr(self):
+        """Test that User has attr last_name, and it's an empty string"""
+        user = User()
+        self.assertTrue(hasattr(user, "last_name"))
+        if models.storage_t == 'db':
+            self.assertEqual(user.last_name, None)
+        else:
+            self.assertEqual(user.last_name, "")
 
-        self.assertIsInstance(self.user.email, str)
-        self.assertIsInstance(self.user.first_name, str)
-        self.assertIsInstance(self.user.last_name, str)
-        self.assertIsInstance(self.user.password, str)
+    def test_to_dict_creates_dict(self):
+        """test to_dict method creates a dictionary with proper attrs"""
+        u = User()
+        new_d = u.to_dict()
+        self.assertEqual(type(new_d), dict)
+        self.assertFalse("_sa_instance_state" in new_d)
+        for attr in u.__dict__:
+            if attr is not "_sa_instance_state":
+                self.assertTrue(attr in new_d)
+        self.assertTrue("__class__" in new_d)
 
-    def test_created_at_and_updated_at(self):
-        """Test created_at and updated_at attributes."""
-        self.assertIsInstance(self.user.created_at, datetime)
-        self.assertIsInstance(self.user.updated_at, datetime)
+    def test_to_dict_values(self):
+        """test that values in dict returned from to_dict are correct"""
+        t_format = "%Y-%m-%dT%H:%M:%S.%f"
+        u = User()
+        new_d = u.to_dict()
+        self.assertEqual(new_d["__class__"], "User")
+        self.assertEqual(type(new_d["created_at"]), str)
+        self.assertEqual(type(new_d["updated_at"]), str)
+        self.assertEqual(new_d["created_at"], u.created_at.strftime(t_format))
+        self.assertEqual(new_d["updated_at"], u.updated_at.strftime(t_format))
 
-    def test_save_updates_updated_at(self):
-        """Test that calling save updates the updated_at attribute."""
-        old_updated_at = self.user.updated_at
-        self.user.save()
-        new_updated_at = self.user.updated_at
-        self.assertNotEqual(old_updated_at, new_updated_at)
-
-    def test_str_representation(self):
-        """Test the __str__ representation of User instance."""
-        user_str = str(self.user)
-        self.assertIn("[User]", user_str)
-        self.assertIn("'id':", user_str)
-        self.assertIn("'created_at':", user_str)
-        self.assertIn("'updated_at':", user_str)
-
-    def test_to_dict_method(self):
-        """Test the to_dict method of User instance."""
-        user_dict = self.user.to_dict()
-        self.assertEqual(user_dict['__class__'], 'User')
-        self.assertEqual(user_dict['id'], str(self.user.id))
-        self.assertEqual(user_dict['created_at'],
-                         self.user.created_at.isoformat())
-        self.assertEqual(user_dict['updated_at'],
-                         self.user.updated_at.isoformat())
-
-    def test_user_delete(self):
-        """Test deleting User instance."""
-        user_id = self.user.id
-        self.user.save()
-        storage.reload()
-
-        self.assertNotIn(user_id, storage.all())
-
-        storage.delete(self.user)
-        storage.save()
-
-        storage.reload()
-        self.assertNotIn(user_id, storage.all())
-
-    def test_user_attributes_after_reload(self):
-        """
-        Test that User instance attributes remain
-        consistent after reload.
-        """
-        user_id = self.user.id
-        user_created_at = self.user.created_at
-        user_updated_at = self.user.updated_at
-
-        self.user.save()
-        self.user.email = 'new_email@example.com'
-        self.user.first_name = 'John'
-        self.user.save()
-
-        storage.reload()
-        reloaded_user = storage.all()[f"User.{user_id}"]
-
-        self.assertEqual(reloaded_user.email, 'new_email@example.com')
-        self.assertEqual(reloaded_user.first_name, 'John')
-        self.assertEqual(reloaded_user.created_at, user_created_at)
-        self.assertNotEqual(reloaded_user.updated_at, user_updated_at)
-
-    def test_instantiation(self):
-        """Test instantiation with different arguments."""
-        self.assertEqual(User, type(User()))
-        self.assertIn(User(), storage.all().values())
-        self.assertEqual(str, type(User().id))
-        self.assertEqual(datetime, type(User().created_at))
-        self.assertEqual(datetime, type(User().updated_at))
-        self.assertEqual(str, type(User.email))
-        self.assertEqual(str, type(User.password))
-        self.assertEqual(str, type(User.first_name))
-        self.assertEqual(str, type(User.last_name))
-        self.assertNotEqual(User(), User())
-
-    def test_str_representation_with_custom_id(self):
-        """Test __str__ representation with a custom ID."""
-        dt = datetime.today()
-        dt_repr = repr(dt)
-        us = User()
-        us.id = "123456"
-        us.created_at = us.updated_at = dt
-        usstr = us.__str__()
-        self.assertIn("[User] (123456)", usstr)
-        self.assertIn("'id': '123456'", usstr)
-        self.assertIn("'created_at': " + dt_repr, usstr)
-        self.assertIn("'updated_at': " + dt_repr, usstr)
-
-    def test_instantiation_with_kwargs(self):
-        """Test instantiation with kwargs."""
-        dt = datetime.today()
-        dt_iso = dt.isoformat()
-        us = User(id="345", created_at=dt_iso, updated_at=dt_iso)
-        self.assertEqual(us.id, "345")
-        self.assertEqual(us.created_at, dt)
-        self.assertEqual(us.updated_at, dt)
-
-        with self.assertRaises(TypeError):
-            User(id=None, created_at=None, updated_at=None)
-
-    def test_saves(self):
-        """Test save method."""
-        us = User()
-        sleep(0.05)
-        first_updated_at = us.updated_at
-        us.save()
-        self.assertLess(first_updated_at, us.updated_at)
-
-        sleep(0.05)
-        second_updated_at = us.updated_at
-        us.save()
-        self.assertLess(second_updated_at, us.updated_at)
-
-        with self.assertRaises(TypeError):
-            us.save(None)
-
-        us.save()
-        usid = "User." + us.id
-        with open("file.json", "r") as f:
-            self.assertIn(usid, f.read())
-
-    def test_to_dict(self):
-        """Test to_dict method."""
-        dt = datetime.today()
-        us = User()
-        us.id = "123456"
-        us.created_at = us.updated_at = dt
-        tdict = {
-            'id': '123456',
-            '__class__': 'User',
-            'created_at': dt.isoformat(),
-            'updated_at': dt.isoformat(),
-        }
-
-        self.assertDictEqual(us.to_dict(), tdict)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_str(self):
+        """test that the str method has the correct output"""
+        user = User()
+        string = "[User] ({}) {}".format(user.id, user.__dict__)
+        self.assertEqual(string, str(user))
